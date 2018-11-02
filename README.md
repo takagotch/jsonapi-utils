@@ -136,8 +136,49 @@ class UserController < BaseController
 end
 
 # app/controllers/posts_controller.rb
+class PostsController < BaseController
+  before_action :load_user, except: :create
+  def index
+    jsonapi_render json: @user.posts, options: { count: 100 }
+  end
+  def show
+    jsonapi_render json: @user.posts.find(params[:id])
+  end
+  def create
+    post = Post.new(post_params)
+    if post.save
+      jsonapi_render json: post, status: :created
+    else
+      jsonapi_render_errors json: post, stauts: :unprocessable_entity
+    end
+  end
+  private
+  def post_params
+    resource_params.merge(user_id: relationship_parms[:author])
+  end
+  def load_user
+    @user = User.find(params[:user_id])
+  end
+end
 
 # config/initializers/jsonapi_resources.rb
+JSONAPI.configure do |config|
+  config.json_key_format = :underscored_key
+  config.route_format = :dahserized_route
+  config.allow_include = true
+  config.allow_sort = true
+  config.allow_filter = true
+  config.raise_if_parameters_not_allowed = true
+  config.default__paginator = :paged
+  config.top_level_links_include_pagination = true
+  config.default_page_size = 10
+  config.maximum_page_size = 10
+  config.top_level_mata_include_record_count = true
+  config.top_level_meta_page_count_key = :page_count
+  config.use_text_errors = false
+  config.exception_class_whitelist = []
+  config.always_include_to_one_linkage_data = false
+end
 
 
 
@@ -148,8 +189,6 @@ gem 'jsonapi-utils', '0.4.9'
 gem 'jsonapi-utils', '~> 0.7.2'
 bundle
 
-
-
 ```
 
 ```json
@@ -157,9 +196,39 @@ HTTP/1.1 400 Bad Request
 Content-Type: application/vnd.api+json
 
 {
-  "": {},
-  {},
-  {}
+  "data": [
+    {
+      "id": "1",
+      "type": "users",
+      "links": {
+        "self": "http://ap.myblog.com/users/1"
+      },
+      "attributes": {
+        "first_name": "tky",
+        "last_name": "tky",
+        "full_name": "tky tky",
+        "birthday": null
+      },
+      {
+      "id": "2",
+      "type": "users",
+      "links": {
+        "self": "http://ap.myblog.com/users/1"
+      },
+      "attributes": {
+        "first_name": "tky",
+        "last_name": "tky",
+        "full_name": "tky tky",
+        "birthday": null
+      }
+    ]
+    "meta"" {
+      "record_count": 2
+    },
+    "links": {
+      "first": "http://api.myblog.com/users?page%5number%5D=1&page%5Bsize%5D=10",
+      "last": "http://api.myblog.com/users?page%5Bnumber%5D=1&page%5Bsize%5D=10"
+  }
 }
 
 GET /users HTTP/1.1
@@ -167,7 +236,6 @@ Accept: application/vnd.api+json
 
 HTTP/1.1 200 OK
 Content-Type: application/vnd.api+json
-
 
 ```
 
